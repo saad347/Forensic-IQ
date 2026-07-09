@@ -89,7 +89,7 @@ export interface Case {
   citation: string;
   causalChain: string;
   hintPool: string[];
-  resourceLink?: string;
+  officialResourceUrl?: string;
   resourceTitle?: string;
 }
 

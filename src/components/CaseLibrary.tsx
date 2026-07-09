@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Case, UserProfile } from '../types';
-import { Play, Award, CheckCircle2, Shield, Flame, Compass, ChevronRight, BarChart3, HelpCircle, Search, SlidersHorizontal } from 'lucide-react';
+import { Play, Award, CheckCircle2, Shield, Flame, Compass, ChevronRight, BarChart3, HelpCircle, Search, SlidersHorizontal, ExternalLink } from 'lucide-react';
 
 interface CaseLibraryProps {
   cases: Case[];
@@ -251,7 +251,7 @@ export default function CaseLibrary({ cases, user, onSelectCase }: CaseLibraryPr
                         </div>
 
                         {/* Play / Select Button Right */}
-                        <div className="shrink-0 w-full md:w-auto flex justify-end">
+                        <div className="shrink-0 w-full md:w-auto flex flex-col md:items-end items-stretch gap-2">
                           <button
                             onClick={() => onSelectCase(c)}
                             className={`w-full md:w-auto px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] flex items-center justify-center space-x-1.5 transition-all border border-[#121212] cursor-pointer ${
@@ -264,6 +264,18 @@ export default function CaseLibrary({ cases, user, onSelectCase }: CaseLibraryPr
                             <Play className="h-3 w-3 fill-current" />
                             <span>{isCompleted ? 'Review Records' : 'Launch File'}</span>
                           </button>
+                          
+                          {isCompleted && c.officialResourceUrl && (
+                            <a
+                              href={c.officialResourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full md:w-auto px-4 py-2 text-[10px] font-bold uppercase tracking-[0.1em] flex items-center justify-center space-x-1.5 transition-all border border-[#121212]/30 text-[#121212]/70 hover:bg-[#121212]/5 hover:text-[#121212] bg-white"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              <span>External Reference</span>
+                            </a>
+                          )}
                         </div>
                       </div>
                     );

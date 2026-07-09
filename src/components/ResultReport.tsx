@@ -121,9 +121,9 @@ export default function ResultReport({ session, currentCase, onContinue }: Resul
                 <strong>Source Engineering Citation:</strong> {currentCase.citation}
               </span>
             </div>
-            {currentCase.resourceLink && (
+            {currentCase.officialResourceUrl && (
               <a 
-                href={currentCase.resourceLink} 
+                href={currentCase.officialResourceUrl} 
                 target="_blank" 
                 rel="noreferrer"
                 className="mt-1 inline-flex items-center gap-1.5 text-[11px] text-red-700 hover:text-red-800 font-bold tracking-wider hover:underline ml-6"

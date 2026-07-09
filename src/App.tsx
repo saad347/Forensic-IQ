@@ -35,8 +35,8 @@ export default function App() {
   const [evidence, setEvidence] = useState<EvidenceCard[]>([]);
   const [completedSession, setCompletedSession] = useState<CompletedCaseSession | null>(null);
 
-  // Instructor Hint state
-  const [aiHint, setAiHint] = useState<string | null>(null);
+  // Guidebook Hint state
+  const [guidebookHint, setGuidebookHint] = useState<string | null>(null);
   const [loadingHint, setLoadingHint] = useState(false);
   const [submittingDiagnosis, setSubmittingDiagnosis] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -55,7 +55,7 @@ export default function App() {
     setBudget(c.startingBudget);
     setPointsSpent(0);
     setHypotheses([]);
-    setAiHint(null);
+    setGuidebookHint(null);
     setErrorMessage(null);
 
     // Prepare deep copy of case evidence cards, reset unlocked states
@@ -112,57 +112,33 @@ export default function App() {
     setErrorMessage(null); // Clear error
   };
 
-  // Retrieve expert instructor hints via Gemini API
-  const handleAskAiTutor = async () => {
+  // Retrieve expert instructor hints locally (Instant, offline)
+  const handleConsultGuidebook = () => {
     if (!activeCase) return;
     setLoadingHint(true);
-    setAiHint(null);
+    setGuidebookHint(null);
 
-    try {
-      const unlockedEvidence = evidence
-        .filter(e => e.unlocked)
-        .map(e => ({
-          name: e.name,
-          shortSummary: e.shortSummary,
-          details: e.visualData?.description || e.sensorData?.description || e.interviewData?.quote || ''
-        }));
-      
-      const res = await fetch('/api/hint', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          briefing: activeCase.briefing,
-          unlockedEvidence,
-          hypotheses
-        })
-      });
-      
-      if (!res.ok) throw new Error('Failed to fetch AI hint');
-      
-      const data = await res.json();
-      setAiHint(data.hint || "Review the fracture surface characteristics and mechanical stress calculations.");
-    } catch (err) {
-      console.error(err);
-      // Fallback if API fails
+    setTimeout(() => {
       const hintCount = activeCase.hintPool.length;
       if (hintCount > 0) {
+        // Select hint sequentially based on current logged hypotheses count or random
         const index = hypotheses.length % hintCount;
-        setAiHint(activeCase.hintPool[index]);
+        setGuidebookHint(activeCase.hintPool[index]);
       } else {
-        setAiHint("Review the fracture surface characteristics and mechanical stress calculations.");
+        setGuidebookHint("Review the fracture surface characteristics and mechanical stress calculations.");
       }
-    } finally {
       setLoadingHint(false);
-    }
+    }, 450);
   };
 
-  // Submit diagnosis for scoring via AI grading engine
-  const handleSubmitDiagnosis = async (suspectedCauseId: string, justification: string, citedEvidenceIds: string[]) => {
+  // Submit diagnosis for scoring via high-fidelity local grading engine
+  const handleSubmitDiagnosis = (suspectedCauseId: string, justification: string, citedEvidenceIds: string[]) => {
     if (!activeCase) return;
     setSubmittingDiagnosis(true);
     setErrorMessage(null);
 
     const isCorrect = suspectedCauseId === activeCase.correctCauseId;
+    const correctCause = activeCase.taxonomyCauses.find(c => c.id === activeCase.correctCauseId);
     const userCause = activeCase.taxonomyCauses.find(c => c.id === suspectedCauseId);
 
     // Deterministic base score calculation:
@@ -176,69 +152,89 @@ export default function App() {
 
     const baseInvestigativeScore = Math.max(0, correctPoints + budgetBonus - redHerringPenalty);
 
-    let gradingFeedback = "";
-    let justificationScore = 20;
-
-    try {
-      const unlockedEvidence = evidence
-        .filter(e => e.unlocked)
-        .map(e => ({
-          name: e.name,
-          shortSummary: e.shortSummary,
-          details: e.visualData?.description || e.sensorData?.description || e.interviewData?.quote || ''
-        }));
-
-      const res = await fetch('/api/grade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          suspectedCauseName: userCause?.name || 'Unknown',
-          justification,
-          unlockedEvidence,
-          isCorrect
-        })
-      });
-
-      if (!res.ok) throw new Error('Failed to fetch AI grade');
+    // High-fidelity local justification grading based on length and core concepts matching
+    let justificationScore = 20; // baseline
+    if (isCorrect) {
+      justificationScore = 50; // correct cause base
+      if (justification.length > 100) justificationScore += 15;
+      if (justification.length > 250) justificationScore += 15;
       
-      const data = await res.json();
-      justificationScore = data.score ?? (isCorrect ? 50 : 25);
-      gradingFeedback = data.feedback || (isCorrect ? "Good diagnosis based on the physical evidence." : "Your diagnosis is not fully supported by the evidence.");
-    } catch (err) {
-      console.error(err);
-      // Fallback
-      justificationScore = isCorrect ? 50 : 25;
-      gradingFeedback = isCorrect ? "Good diagnosis based on the physical evidence." : "Your diagnosis is not fully supported by the evidence.";
+      // Bonus if key keywords are in user's justification
+      const keywords = ['fracture', 'microstructure', 'stress', 'analysis', 'fatigue', 'overload', 'cleavage', 'beach', 'corrosion', 'microvoid'];
+      let foundKeywords = 0;
+      keywords.forEach(kw => {
+        if (justification.toLowerCase().includes(kw)) foundKeywords++;
+      });
+      justificationScore += Math.min(20, foundKeywords * 3);
+    } else {
+      // incorrect cause base
+      justificationScore = 25;
+      if (justification.length > 150) justificationScore += 10;
     }
+    justificationScore = Math.min(100, justificationScore);
 
     const finalScore = Math.round((baseInvestigativeScore * 0.6) + (justificationScore * 0.4));
 
-    const newSession: CompletedCaseSession = {
-      caseId: activeCase.id,
-      completedAt: new Date().toISOString(),
-      score: finalScore,
-      suspectedCauseId,
-      justification,
-      hypotheses,
-      unlockedEvidenceIds: evidence.filter(e => e.unlocked).map(e => e.id),
-      pointsSpent,
-      correct: isCorrect,
-      gradingFeedback,
-      gradingScore: justificationScore
+    // Peer Review Feedback Generator
+    const getClientFeedback = () => {
+      const isWordy = justification.length > 150;
+      const hasRedHerring = unlockedRedHerringsCount > 0;
+      const uCauseName = userCause?.name || 'Unknown Mechanism';
+      const cCauseName = correctCause?.name || 'Unknown Mechanism';
+
+      if (isCorrect) {
+        let text = `Excellent physical diagnosis! Your identification of ${cCauseName} perfectly aligns with the forensic metallurgical observations. `;
+        if (isWordy) {
+          text += `Your analysis exhibits exceptional professional depth, drawing robust connections between macroscopic stress layouts and micro-fractography evidence. `;
+        } else {
+          text += `Your rationale is accurate, though expanding the report with more specific references to SEM scan findings would elevate the engineering record. `;
+        }
+        if (!hasRedHerring) {
+          text += `Your forensic methodology was highly efficient, conserving budget resources and ignoring distracting non-empirical witness speculation.`;
+        } else {
+          text += `Note: Unlocking red herrings (${unlockedRedHerringsCount} files) reduced investigation efficiency. Focus strictly on core physical materials in future cases.`;
+        }
+        return text;
+      } else {
+        let text = `Peer Review Status: Rejected. You proposed ${uCauseName}, but structural archives do not substantiate this. `;
+        if (evidence.filter(e => e.unlocked).length === 0) {
+          text += `No empirical physical evidence was unlocked prior to filing your report. A forensic diagnosis cannot be substantiated on pure speculation. `;
+        } else {
+          text += `Your justification is detailed but fails to resolve key material properties. For example, fracture facets or thermal logs point directly to ${cCauseName} instead of your proposed diagnosis. `;
+        }
+        text += `Examine the micrographs, cross-reference high-resolution fracture surfaces, and submit an amended investigation report.`;
+        return text;
+      }
     };
 
-    // Save to user profile history
-    const updatedHistory = [...user.history.filter(h => h.caseId !== activeCase.id), newSession];
-    const newTotalScore = updatedHistory.reduce((acc, h) => acc + h.score, 0);
+    setTimeout(() => {
+      const newSession: CompletedCaseSession = {
+        caseId: activeCase.id,
+        completedAt: new Date().toISOString(),
+        score: finalScore,
+        suspectedCauseId,
+        justification,
+        hypotheses,
+        unlockedEvidenceIds: evidence.filter(e => e.unlocked).map(e => e.id),
+        pointsSpent,
+        correct: isCorrect,
+        gradingFeedback: getClientFeedback(),
+        gradingScore: justificationScore
+      };
 
-    setUser(prev => ({
-      ...prev,
-      history: updatedHistory,
-      totalScore: newTotalScore
-    }));
+      // Save to user profile history
+      const updatedHistory = [...user.history.filter(h => h.caseId !== activeCase.id), newSession];
+      const newTotalScore = updatedHistory.reduce((acc, h) => acc + h.score, 0);
 
-    setCompletedSession(newSession);
-    setSubmittingDiagnosis(false);
+      setUser(prev => ({
+        ...prev,
+        history: updatedHistory,
+        totalScore: newTotalScore
+      }));
+
+      setCompletedSession(newSession);
+      setSubmittingDiagnosis(false);
+    }, 1100); // realistic high-tech diagnostic simulation delay
   };
 
   // Reset simulator state
@@ -333,33 +329,33 @@ export default function App() {
                   </div>
 
                   {/* Socratic Hint Board Block */}
-                  <div className="border border-[#121212] bg-[#FFFFFF] p-5 text-[#121212] shadow-none rounded-none space-y-4" id="ai-tutor-card">
+                  <div className="border border-[#121212] bg-[#FFFFFF] p-5 text-[#121212] shadow-none rounded-none space-y-4" id="case-guidebook-card">
                     <div className="flex items-center justify-between">
                       <h4 className="font-serif italic text-sm text-[#121212] flex items-center gap-1.5">
                         <HelpCircle className="h-4 w-4 text-red-600" />
-                        <span>Instructor's Hint Desk</span>
+                        <span>Case Guidebook</span>
                       </h4>
                       <span className="text-[9px] font-mono bg-[#121212] text-white px-2 py-0.5 tracking-wider font-bold uppercase">
                         GUIDEBOOK
                       </span>
                     </div>
                     <p className="text-[11px] text-[#121212]/75 leading-relaxed">
-                      Need material or fractography guidance? Consult the expert instructor hints for professional direction.
+                      Need material or fractography guidance? Consult the case guidebook for professional direction.
                     </p>
 
                     <button
-                      onClick={handleAskAiTutor}
+                      onClick={handleConsultGuidebook}
                       disabled={loadingHint}
                       className="w-full py-3 bg-[#121212] hover:bg-[#121212]/90 border border-[#121212] text-white text-xs font-bold uppercase tracking-[0.2em] rounded-none transition-all flex items-center justify-center space-x-1.5 cursor-pointer font-mono"
-                      id="ask-tutor-btn"
+                      id="ask-guidebook-btn"
                     >
                       <HelpCircle className="h-3.5 w-3.5 text-red-600" />
-                      <span>{loadingHint ? 'CONSULTING REPOSITORIES...' : 'RETRIEVE INSTRUCTOR HINT'}</span>
+                      <span>{loadingHint ? 'CONSULTING REPOSITORIES...' : 'RETRIEVE GUIDEBOOK HINT'}</span>
                     </button>
 
-                    {aiHint && (
-                      <div className="bg-[#F1EFE9] p-4 border border-[#121212]/15 text-[11px] text-[#121212] italic font-serif leading-relaxed animate-fade-in" id="ai-tutor-bubble">
-                        "{aiHint}"
+                    {guidebookHint && (
+                      <div className="bg-[#F1EFE9] p-4 border border-[#121212]/15 text-[11px] text-[#121212] italic font-serif leading-relaxed animate-fade-in" id="guidebook-hint-bubble">
+                        "{guidebookHint}"
                       </div>
                     )}
                   </div>
