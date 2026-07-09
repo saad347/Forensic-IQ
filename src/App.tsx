@@ -112,33 +112,57 @@ export default function App() {
     setErrorMessage(null); // Clear error
   };
 
-  // Retrieve expert instructor hints locally (Instant, offline)
-  const handleAskAiTutor = () => {
+  // Retrieve expert instructor hints via Gemini API
+  const handleAskAiTutor = async () => {
     if (!activeCase) return;
     setLoadingHint(true);
     setAiHint(null);
 
-    setTimeout(() => {
+    try {
+      const unlockedEvidence = evidence
+        .filter(e => e.unlocked)
+        .map(e => ({
+          name: e.name,
+          shortSummary: e.shortSummary,
+          details: e.visualData?.description || e.sensorData?.description || e.interviewData?.quote || ''
+        }));
+      
+      const res = await fetch('/api/hint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          briefing: activeCase.briefing,
+          unlockedEvidence,
+          hypotheses
+        })
+      });
+      
+      if (!res.ok) throw new Error('Failed to fetch AI hint');
+      
+      const data = await res.json();
+      setAiHint(data.hint || "Review the fracture surface characteristics and mechanical stress calculations.");
+    } catch (err) {
+      console.error(err);
+      // Fallback if API fails
       const hintCount = activeCase.hintPool.length;
       if (hintCount > 0) {
-        // Select hint sequentially based on current logged hypotheses count or random
         const index = hypotheses.length % hintCount;
         setAiHint(activeCase.hintPool[index]);
       } else {
         setAiHint("Review the fracture surface characteristics and mechanical stress calculations.");
       }
+    } finally {
       setLoadingHint(false);
-    }, 450);
+    }
   };
 
-  // Submit diagnosis for scoring via high-fidelity local grading engine
-  const handleSubmitDiagnosis = (suspectedCauseId: string, justification: string, citedEvidenceIds: string[]) => {
+  // Submit diagnosis for scoring via AI grading engine
+  const handleSubmitDiagnosis = async (suspectedCauseId: string, justification: string, citedEvidenceIds: string[]) => {
     if (!activeCase) return;
     setSubmittingDiagnosis(true);
     setErrorMessage(null);
 
     const isCorrect = suspectedCauseId === activeCase.correctCauseId;
-    const correctCause = activeCase.taxonomyCauses.find(c => c.id === activeCase.correctCauseId);
     const userCause = activeCase.taxonomyCauses.find(c => c.id === suspectedCauseId);
 
     // Deterministic base score calculation:
@@ -152,89 +176,69 @@ export default function App() {
 
     const baseInvestigativeScore = Math.max(0, correctPoints + budgetBonus - redHerringPenalty);
 
-    // High-fidelity local justification grading based on length and core concepts matching
-    let justificationScore = 20; // baseline
-    if (isCorrect) {
-      justificationScore = 50; // correct cause base
-      if (justification.length > 100) justificationScore += 15;
-      if (justification.length > 250) justificationScore += 15;
-      
-      // Bonus if key keywords are in user's justification
-      const keywords = ['fracture', 'microstructure', 'stress', 'analysis', 'fatigue', 'overload', 'cleavage', 'beach', 'corrosion', 'microvoid'];
-      let foundKeywords = 0;
-      keywords.forEach(kw => {
-        if (justification.toLowerCase().includes(kw)) foundKeywords++;
+    let gradingFeedback = "";
+    let justificationScore = 20;
+
+    try {
+      const unlockedEvidence = evidence
+        .filter(e => e.unlocked)
+        .map(e => ({
+          name: e.name,
+          shortSummary: e.shortSummary,
+          details: e.visualData?.description || e.sensorData?.description || e.interviewData?.quote || ''
+        }));
+
+      const res = await fetch('/api/grade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          suspectedCauseName: userCause?.name || 'Unknown',
+          justification,
+          unlockedEvidence,
+          isCorrect
+        })
       });
-      justificationScore += Math.min(20, foundKeywords * 3);
-    } else {
-      // incorrect cause base
-      justificationScore = 25;
-      if (justification.length > 150) justificationScore += 10;
+
+      if (!res.ok) throw new Error('Failed to fetch AI grade');
+      
+      const data = await res.json();
+      justificationScore = data.score ?? (isCorrect ? 50 : 25);
+      gradingFeedback = data.feedback || (isCorrect ? "Good diagnosis based on the physical evidence." : "Your diagnosis is not fully supported by the evidence.");
+    } catch (err) {
+      console.error(err);
+      // Fallback
+      justificationScore = isCorrect ? 50 : 25;
+      gradingFeedback = isCorrect ? "Good diagnosis based on the physical evidence." : "Your diagnosis is not fully supported by the evidence.";
     }
-    justificationScore = Math.min(100, justificationScore);
 
     const finalScore = Math.round((baseInvestigativeScore * 0.6) + (justificationScore * 0.4));
 
-    // Peer Review Feedback Generator
-    const getClientFeedback = () => {
-      const isWordy = justification.length > 150;
-      const hasRedHerring = unlockedRedHerringsCount > 0;
-      const uCauseName = userCause?.name || 'Unknown Mechanism';
-      const cCauseName = correctCause?.name || 'Unknown Mechanism';
-
-      if (isCorrect) {
-        let text = `Excellent physical diagnosis! Your identification of ${cCauseName} perfectly aligns with the forensic metallurgical observations. `;
-        if (isWordy) {
-          text += `Your analysis exhibits exceptional professional depth, drawing robust connections between macroscopic stress layouts and micro-fractography evidence. `;
-        } else {
-          text += `Your rationale is accurate, though expanding the report with more specific references to SEM scan findings would elevate the engineering record. `;
-        }
-        if (!hasRedHerring) {
-          text += `Your forensic methodology was highly efficient, conserving budget resources and ignoring distracting non-empirical witness speculation.`;
-        } else {
-          text += `Note: Unlocking red herrings (${unlockedRedHerringsCount} files) reduced investigation efficiency. Focus strictly on core physical materials in future cases.`;
-        }
-        return text;
-      } else {
-        let text = `Peer Review Status: Rejected. You proposed ${uCauseName}, but structural archives do not substantiate this. `;
-        if (evidence.filter(e => e.unlocked).length === 0) {
-          text += `No empirical physical evidence was unlocked prior to filing your report. A forensic diagnosis cannot be substantiated on pure speculation. `;
-        } else {
-          text += `Your justification is detailed but fails to resolve key material properties. For example, fracture facets or thermal logs point directly to ${cCauseName} instead of your proposed diagnosis. `;
-        }
-        text += `Examine the micrographs, cross-reference high-resolution fracture surfaces, and submit an amended investigation report.`;
-        return text;
-      }
+    const newSession: CompletedCaseSession = {
+      caseId: activeCase.id,
+      completedAt: new Date().toISOString(),
+      score: finalScore,
+      suspectedCauseId,
+      justification,
+      hypotheses,
+      unlockedEvidenceIds: evidence.filter(e => e.unlocked).map(e => e.id),
+      pointsSpent,
+      correct: isCorrect,
+      gradingFeedback,
+      gradingScore: justificationScore
     };
 
-    setTimeout(() => {
-      const newSession: CompletedCaseSession = {
-        caseId: activeCase.id,
-        completedAt: new Date().toISOString(),
-        score: finalScore,
-        suspectedCauseId,
-        justification,
-        hypotheses,
-        unlockedEvidenceIds: evidence.filter(e => e.unlocked).map(e => e.id),
-        pointsSpent,
-        correct: isCorrect,
-        gradingFeedback: getClientFeedback(),
-        gradingScore: justificationScore
-      };
+    // Save to user profile history
+    const updatedHistory = [...user.history.filter(h => h.caseId !== activeCase.id), newSession];
+    const newTotalScore = updatedHistory.reduce((acc, h) => acc + h.score, 0);
 
-      // Save to user profile history
-      const updatedHistory = [...user.history.filter(h => h.caseId !== activeCase.id), newSession];
-      const newTotalScore = updatedHistory.reduce((acc, h) => acc + h.score, 0);
+    setUser(prev => ({
+      ...prev,
+      history: updatedHistory,
+      totalScore: newTotalScore
+    }));
 
-      setUser(prev => ({
-        ...prev,
-        history: updatedHistory,
-        totalScore: newTotalScore
-      }));
-
-      setCompletedSession(newSession);
-      setSubmittingDiagnosis(false);
-    }, 1100); // realistic high-tech diagnostic simulation delay
+    setCompletedSession(newSession);
+    setSubmittingDiagnosis(false);
   };
 
   // Reset simulator state

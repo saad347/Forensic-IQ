@@ -53,6 +53,20 @@ export default function InstructorPanel() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10 animate-fade-in" id="instructor-dashboard-view">
       
+      {/* Demo Banner */}
+      <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-md">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <ShieldAlert className="h-5 w-5 text-amber-400" aria-hidden="true" />
+          </div>
+          <div className="ml-3">
+            <p className="text-sm text-amber-700">
+              Demo data — connect a class roster to see real students
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Roster & Analytics Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 border-b-2 border-[#121212] gap-4">
         <div>
