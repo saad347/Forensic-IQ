@@ -1,0 +1,8 @@
+{
+  "name": "ForensiQ: Failure Forensics",
+  "description": "An interactive, evidence-driven failure forensics simulator with a catalog of 100+ case studies and an instructor hint guidebook.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
