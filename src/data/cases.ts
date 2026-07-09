@@ -37,12 +37,16 @@ const BASE_CASES: Partial<Case>[] = [
     hintPool: ['Examine the fillet radius.', 'Check maintenance logs for machining.', 'Look for beach marks.'],
     evidence: [
       {
-        id: 'ev1', name: 'Fractograph', category: 'visual', cost: 15, redHerring: false, shortSummary: 'Macro-photograph of shaft surface.',
-        visualData: { imageUrl: 'https://images.unsplash.com/photo-1590846127263-95c52c035fdd?q=80&w=800&auto=format&fit=crop', description: 'Stereo microscope view. Initiation at sharp fillet, showing concentric beach marks.', hasZoom: true, zoomDetails: 'SEM shows micro-striations.', annotations: [{x: 50, y: 30, label: 'Beach marks evident'}] }
+        id: 'ev1', name: 'Fractograph', category: 'visual', cost: 15, redHerring: false, supportsCauseIds: ['fatigue'], redHerringExplanation: undefined, shortSummary: 'Macro-photograph of shaft surface.',
+        visualData: { imageUrl: "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'%3E%3Crect width='100%25' height='100%25' fill='%23e0e0e0'/%3E%3Cpath d='M 200 200 L 600 200 M 350 150 L 450 250' stroke='%23777' stroke-width='4' fill='none'/%3E%3Ctext x='400' y='50' font-family='sans-serif' font-size='20' text-anchor='middle' fill='%23555'%3E[OFFLINE EVIDENCE RENDER]%3C/text%3E%3C/svg%3E", description: 'Stereo microscope view. Initiation at sharp fillet, showing concentric beach marks.', hasZoom: true, zoomDetails: 'SEM shows micro-striations.', annotations: [{x: 50, y: 30, label: 'Beach marks evident'}] }
       },
       {
-        id: 'ev2', name: 'Vibration Logs', category: 'sensor', cost: 10, redHerring: false, shortSummary: 'Sensor telemetry.',
+        id: 'ev2', name: 'Vibration Logs', category: 'sensor', cost: 10, redHerring: false, supportsCauseIds: ['fatigue'], redHerringExplanation: undefined, shortSummary: 'Sensor telemetry.',
         sensorData: { chartTitle: 'Vibration', xAxisLabel: 'Months', yAxisLabel: 'Velocity', unit: 'mm/s', description: 'Stable vibration, slight increase.', dataPoints: [{time: 'M1', value: 1.8}, {time: 'Fail', value: 2.4}] }
+      },
+      {
+        id: 'ev3', name: 'Operator Interview', category: 'interview', cost: 5, redHerring: true, supportsCauseIds: ['overload'], redHerringExplanation: 'The operator speculated about a massive power surge, but load logs show normal current. It tests if you believe hearsay over physical evidence.', shortSummary: 'Operator statement on the incident.',
+        interviewData: { witnessRole: 'Shift Supervisor', quote: 'I heard a massive bang and the motor pulled triple amps! Must have been a huge overload from the grid!', reliability: 'Low' }
       }
     ]
   },
@@ -67,8 +71,8 @@ const BASE_CASES: Partial<Case>[] = [
     hintPool: ['Check alloy specs.', 'Examine SEM for cleavage.', 'Note DBTT temperatures.'],
     evidence: [
       {
-        id: 'ev1', name: 'SEM Bolt', category: 'visual', cost: 20, redHerring: false, shortSummary: 'Micrograph of cracked bolt.',
-        visualData: { imageUrl: 'https://images.unsplash.com/photo-1629904853716-f0bc54ecec81?q=80&w=800&auto=format&fit=crop', description: 'Cleavage facets and river marks, zero plastic necking.', hasZoom: true, zoomDetails: 'River marks evident.', annotations: [{x: 40, y: 60, label: 'Cleavage facet'}] }
+        id: 'ev1', name: 'SEM Bolt', category: 'visual', cost: 20, redHerring: false, supportsCauseIds: ['brittle'], redHerringExplanation: undefined, shortSummary: 'Micrograph of cracked bolt.',
+        visualData: { imageUrl: "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'%3E%3Crect width='100%25' height='100%25' fill='%23e0e0e0'/%3E%3Cpath d='M 200 200 L 600 200 M 350 150 L 450 250' stroke='%23777' stroke-width='4' fill='none'/%3E%3Ctext x='400' y='50' font-family='sans-serif' font-size='20' text-anchor='middle' fill='%23555'%3E[OFFLINE EVIDENCE RENDER]%3C/text%3E%3C/svg%3E", description: 'Cleavage facets and river marks, zero plastic necking.', hasZoom: true, zoomDetails: 'River marks evident.', annotations: [{x: 40, y: 60, label: 'Cleavage facet'}] }
       }
     ]
   },
@@ -93,8 +97,8 @@ const BASE_CASES: Partial<Case>[] = [
     hintPool: ['Look for fish-mouth opening.', 'Check pressure telemetry.'],
     evidence: [
       {
-        id: 'ev1', name: 'Visual Burst', category: 'visual', cost: 15, redHerring: false, shortSummary: 'Boiler tube burst profile.',
-        visualData: { imageUrl: 'https://images.unsplash.com/photo-1504913659239-6abc87875a63?q=80&w=800&auto=format&fit=crop', description: 'Fish-mouth rupture, thin knife-like lips.', hasZoom: true, zoomDetails: 'Dimpled structure.', annotations: [{x: 60, y: 50, label: 'Thinning / Necking'}] }
+        id: 'ev1', name: 'Visual Burst', category: 'visual', cost: 15, redHerring: false, supportsCauseIds: ['ductile'], redHerringExplanation: undefined, shortSummary: 'Boiler tube burst profile.',
+        visualData: { imageUrl: "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'%3E%3Crect width='100%25' height='100%25' fill='%23e0e0e0'/%3E%3Cpath d='M 200 200 L 600 200 M 350 150 L 450 250' stroke='%23777' stroke-width='4' fill='none'/%3E%3Ctext x='400' y='50' font-family='sans-serif' font-size='20' text-anchor='middle' fill='%23555'%3E[OFFLINE EVIDENCE RENDER]%3C/text%3E%3C/svg%3E", description: 'Fish-mouth rupture, thin knife-like lips.', hasZoom: true, zoomDetails: 'Dimpled structure.', annotations: [{x: 60, y: 50, label: 'Thinning / Necking'}] }
       }
     ]
   },
@@ -119,8 +123,8 @@ const BASE_CASES: Partial<Case>[] = [
     hintPool: ['Look for branched cracking.', 'Check PWHT logs.', 'Check chlorides.'],
     evidence: [
       {
-        id: 'ev1', name: 'Micrograph', category: 'visual', cost: 20, redHerring: false, shortSummary: 'Crack cross-section.',
-        visualData: { imageUrl: 'https://images.unsplash.com/photo-1533575770077-052fa2c609fc?q=80&w=800&auto=format&fit=crop', description: 'Highly branched transgranular cracking.', hasZoom: true, zoomDetails: 'Typical SCC structure.', annotations: [{x: 20, y: 70, label: 'Branched cracks'}] }
+        id: 'ev1', name: 'Micrograph', category: 'visual', cost: 20, redHerring: false, supportsCauseIds: ['scc'], redHerringExplanation: undefined, shortSummary: 'Crack cross-section.',
+        visualData: { imageUrl: "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'%3E%3Crect width='100%25' height='100%25' fill='%23e0e0e0'/%3E%3Cpath d='M 200 200 L 600 200 M 350 150 L 450 250' stroke='%23777' stroke-width='4' fill='none'/%3E%3Ctext x='400' y='50' font-family='sans-serif' font-size='20' text-anchor='middle' fill='%23555'%3E[OFFLINE EVIDENCE RENDER]%3C/text%3E%3C/svg%3E", description: 'Highly branched transgranular cracking.', hasZoom: true, zoomDetails: 'Typical SCC structure.', annotations: [{x: 20, y: 70, label: 'Branched cracks'}] }
       }
     ]
   },
@@ -145,8 +149,8 @@ const BASE_CASES: Partial<Case>[] = [
     hintPool: ['Look for gouges.', 'Check oil silicon levels.', 'Review seal inspection.'],
     evidence: [
       {
-        id: 'ev1', name: 'Wear Flank', category: 'visual', cost: 15, redHerring: false, shortSummary: 'Gear teeth close-up.',
-        visualData: { imageUrl: 'https://images.unsplash.com/photo-1606322971216-3e79dbcc0699?q=80&w=800&auto=format&fit=crop', description: 'Deep gouges and micro-ploughing tracks.', hasZoom: true, zoomDetails: 'Silica grains embedded.', annotations: [{x: 40, y: 40, label: 'Gouging marks'}] }
+        id: 'ev1', name: 'Wear Flank', category: 'visual', cost: 15, redHerring: false, supportsCauseIds: ['abrasive'], redHerringExplanation: undefined, shortSummary: 'Gear teeth close-up.',
+        visualData: { imageUrl: "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'%3E%3Crect width='100%25' height='100%25' fill='%23e0e0e0'/%3E%3Cpath d='M 200 200 L 600 200 M 350 150 L 450 250' stroke='%23777' stroke-width='4' fill='none'/%3E%3Ctext x='400' y='50' font-family='sans-serif' font-size='20' text-anchor='middle' fill='%23555'%3E[OFFLINE EVIDENCE RENDER]%3C/text%3E%3C/svg%3E", description: 'Deep gouges and micro-ploughing tracks.', hasZoom: true, zoomDetails: 'Silica grains embedded.', annotations: [{x: 40, y: 40, label: 'Gouging marks'}] }
       }
     ]
   },
@@ -171,8 +175,8 @@ const BASE_CASES: Partial<Case>[] = [
     hintPool: ['Look for grain boundary voids.', 'Check temp logs.', 'Review alloy specs.'],
     evidence: [
       {
-        id: 'ev1', name: 'Microstructure', category: 'visual', cost: 20, redHerring: false, shortSummary: 'Blade cross-section.',
-        visualData: { imageUrl: 'https://images.unsplash.com/photo-1518773926880-60b64d39e236?q=80&w=800&auto=format&fit=crop', description: 'Microscopic spherical cavities along transverse grain boundaries.', hasZoom: true, zoomDetails: 'Creep voids.', annotations: [{x: 70, y: 70, label: 'Microvoids at boundary'}] }
+        id: 'ev1', name: 'Microstructure', category: 'visual', cost: 20, redHerring: false, supportsCauseIds: ['creep'], redHerringExplanation: undefined, shortSummary: 'Blade cross-section.',
+        visualData: { imageUrl: "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'%3E%3Crect width='100%25' height='100%25' fill='%23e0e0e0'/%3E%3Cpath d='M 200 200 L 600 200 M 350 150 L 450 250' stroke='%23777' stroke-width='4' fill='none'/%3E%3Ctext x='400' y='50' font-family='sans-serif' font-size='20' text-anchor='middle' fill='%23555'%3E[OFFLINE EVIDENCE RENDER]%3C/text%3E%3C/svg%3E", description: 'Microscopic spherical cavities along transverse grain boundaries.', hasZoom: true, zoomDetails: 'Creep voids.', annotations: [{x: 70, y: 70, label: 'Microvoids at boundary'}] }
       }
     ]
   },
@@ -197,8 +201,8 @@ const BASE_CASES: Partial<Case>[] = [
     hintPool: ['Look at cyclic temp logs.', 'Review tube sheet geometry.', 'Check for multiple initiation sites (craze cracking).'],
     evidence: [
       {
-        id: 'ev1', name: 'Visual Sheet', category: 'visual', cost: 15, redHerring: false, shortSummary: 'Tube sheet cracks.',
-        visualData: { imageUrl: 'https://images.unsplash.com/photo-1542385151-efd9000785a0?q=80&w=800&auto=format&fit=crop', description: 'Network of craze cracking (checkerboard pattern) on the surface.', hasZoom: true, zoomDetails: 'Transgranular cracks filled with oxide spikes.', annotations: [{x: 30, y: 40, label: 'Craze cracking'}] }
+        id: 'ev1', name: 'Visual Sheet', category: 'visual', cost: 15, redHerring: false, supportsCauseIds: ['thermal_fatigue'], redHerringExplanation: undefined, shortSummary: 'Tube sheet cracks.',
+        visualData: { imageUrl: "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'%3E%3Crect width='100%25' height='100%25' fill='%23e0e0e0'/%3E%3Cpath d='M 200 200 L 600 200 M 350 150 L 450 250' stroke='%23777' stroke-width='4' fill='none'/%3E%3Ctext x='400' y='50' font-family='sans-serif' font-size='20' text-anchor='middle' fill='%23555'%3E[OFFLINE EVIDENCE RENDER]%3C/text%3E%3C/svg%3E", description: 'Network of craze cracking (checkerboard pattern) on the surface.', hasZoom: true, zoomDetails: 'Transgranular cracks filled with oxide spikes.', annotations: [{x: 30, y: 40, label: 'Craze cracking'}] }
       }
     ]
   },
@@ -223,8 +227,8 @@ const BASE_CASES: Partial<Case>[] = [
     hintPool: ['Check inlet pressure logs.', 'Look for spongy pitting.', 'Calculate NPSH.'],
     evidence: [
       {
-        id: 'ev1', name: 'Impeller Macro', category: 'visual', cost: 15, redHerring: false, shortSummary: 'Impeller trailing edge.',
-        visualData: { imageUrl: 'https://images.unsplash.com/photo-1582298642735-86643efb8e23?q=80&w=800&auto=format&fit=crop', description: 'Deep, irregular, spongy pitting craters with no rust or corrosion products.', hasZoom: true, zoomDetails: 'Micro-jet impact deformation.', annotations: [{x: 50, y: 50, label: 'Spongy craters'}] }
+        id: 'ev1', name: 'Impeller Macro', category: 'visual', cost: 15, redHerring: false, supportsCauseIds: ['cavitation'], redHerringExplanation: undefined, shortSummary: 'Impeller trailing edge.',
+        visualData: { imageUrl: "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'%3E%3Crect width='100%25' height='100%25' fill='%23e0e0e0'/%3E%3Cpath d='M 200 200 L 600 200 M 350 150 L 450 250' stroke='%23777' stroke-width='4' fill='none'/%3E%3Ctext x='400' y='50' font-family='sans-serif' font-size='20' text-anchor='middle' fill='%23555'%3E[OFFLINE EVIDENCE RENDER]%3C/text%3E%3C/svg%3E", description: 'Deep, irregular, spongy pitting craters with no rust or corrosion products.', hasZoom: true, zoomDetails: 'Micro-jet impact deformation.', annotations: [{x: 50, y: 50, label: 'Spongy craters'}] }
       }
     ]
   },
@@ -249,8 +253,8 @@ const BASE_CASES: Partial<Case>[] = [
     hintPool: ['Check valve closing times or pump trips.', 'Look at transient pressure logs.'],
     evidence: [
       {
-        id: 'ev1', name: 'Elongated Tear', category: 'visual', cost: 15, redHerring: false, shortSummary: 'PVC elbow fragments.',
-        visualData: { imageUrl: 'https://images.unsplash.com/photo-1591550921473-b3cda789b788?q=80&w=800&auto=format&fit=crop', description: 'Massive longitudinal splitting of the pipe.', hasZoom: true, zoomDetails: 'No prior degradation.', annotations: [{x: 60, y: 40, label: 'Longitudinal split'}] }
+        id: 'ev1', name: 'Elongated Tear', category: 'visual', cost: 15, redHerring: false, supportsCauseIds: ['water_hammer'], redHerringExplanation: undefined, shortSummary: 'PVC elbow fragments.',
+        visualData: { imageUrl: "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'%3E%3Crect width='100%25' height='100%25' fill='%23e0e0e0'/%3E%3Cpath d='M 200 200 L 600 200 M 350 150 L 450 250' stroke='%23777' stroke-width='4' fill='none'/%3E%3Ctext x='400' y='50' font-family='sans-serif' font-size='20' text-anchor='middle' fill='%23555'%3E[OFFLINE EVIDENCE RENDER]%3C/text%3E%3C/svg%3E", description: 'Massive longitudinal splitting of the pipe.', hasZoom: true, zoomDetails: 'No prior degradation.', annotations: [{x: 60, y: 40, label: 'Longitudinal split'}] }
       }
     ]
   },
@@ -275,8 +279,8 @@ const BASE_CASES: Partial<Case>[] = [
     hintPool: ['Look at ambient temp during offline hours.', 'Check heater logs.', 'Look at the shattered scroll plates.'],
     evidence: [
       {
-        id: 'ev1', name: 'Shattered Scroll', category: 'visual', cost: 15, redHerring: false, shortSummary: 'Internal scroll plates.',
-        visualData: { imageUrl: 'https://images.unsplash.com/photo-1616881720845-e461b2ed0c39?q=80&w=800&auto=format&fit=crop', description: 'Heavy cast-iron scroll plates broken into multiple large, clean chunks.', hasZoom: true, zoomDetails: 'Massive overload fracture surfaces.', annotations: [{x: 45, y: 55, label: 'Overload chunk'}] }
+        id: 'ev1', name: 'Shattered Scroll', category: 'visual', cost: 15, redHerring: false, supportsCauseIds: ['hvac_slug'], redHerringExplanation: undefined, shortSummary: 'Internal scroll plates.',
+        visualData: { imageUrl: "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'%3E%3Crect width='100%25' height='100%25' fill='%23e0e0e0'/%3E%3Cpath d='M 200 200 L 600 200 M 350 150 L 450 250' stroke='%23777' stroke-width='4' fill='none'/%3E%3Ctext x='400' y='50' font-family='sans-serif' font-size='20' text-anchor='middle' fill='%23555'%3E[OFFLINE EVIDENCE RENDER]%3C/text%3E%3C/svg%3E", description: 'Heavy cast-iron scroll plates broken into multiple large, clean chunks.', hasZoom: true, zoomDetails: 'Massive overload fracture surfaces.', annotations: [{x: 45, y: 55, label: 'Overload chunk'}] }
       }
     ]
   },
@@ -301,8 +305,8 @@ const BASE_CASES: Partial<Case>[] = [
     hintPool: ['Look closely under the bearing seat.', 'Check for reddish-brown oxide powder.', 'Search for initiation marks.'],
     evidence: [
       {
-        id: 'ev1', name: 'Bearing Seat Scan', category: 'visual', cost: 15, redHerring: false, shortSummary: 'Axle surface at fracture.',
-        visualData: { imageUrl: 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?q=80&w=800&auto=format&fit=crop', description: 'Presence of reddish-brown "cocoa" powder and semi-circular crack initiation beneath the press-fit region.', hasZoom: true, zoomDetails: 'Fretting wear scars with microcracks.', annotations: [{x: 35, y: 50, label: 'Cocoa oxide powder'}] }
+        id: 'ev1', name: 'Bearing Seat Scan', category: 'visual', cost: 15, redHerring: false, supportsCauseIds: ['fretting'], redHerringExplanation: undefined, shortSummary: 'Axle surface at fracture.',
+        visualData: { imageUrl: "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'%3E%3Crect width='100%25' height='100%25' fill='%23e0e0e0'/%3E%3Cpath d='M 200 200 L 600 200 M 350 150 L 450 250' stroke='%23777' stroke-width='4' fill='none'/%3E%3Ctext x='400' y='50' font-family='sans-serif' font-size='20' text-anchor='middle' fill='%23555'%3E[OFFLINE EVIDENCE RENDER]%3C/text%3E%3C/svg%3E", description: 'Presence of reddish-brown "cocoa" powder and semi-circular crack initiation beneath the press-fit region.', hasZoom: true, zoomDetails: 'Fretting wear scars with microcracks.', annotations: [{x: 35, y: 50, label: 'Cocoa oxide powder'}] }
       }
     ]
   },
@@ -327,8 +331,12 @@ const BASE_CASES: Partial<Case>[] = [
     hintPool: ['Check payload weight vs specs.', 'Look at limit switch logs.', 'Examine fracture surface for rapid failure.'],
     evidence: [
       {
-        id: 'ev1', name: 'Arm Linkage Break', category: 'visual', cost: 15, redHerring: false, shortSummary: 'Broken cast aluminum link.',
-        visualData: { imageUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?q=80&w=800&auto=format&fit=crop', description: 'Rough, grainy, crystalline fracture surface typical of a sudden overload in cast aluminum.', hasZoom: false, zoomDetails: '', annotations: [{x: 50, y: 50, label: 'Rough fracture surface'}] }
+        id: 'ev1', name: 'Arm Linkage Break', category: 'visual', cost: 15, redHerring: false, supportsCauseIds: ['overload'], redHerringExplanation: undefined, shortSummary: 'Broken cast aluminum link.',
+        visualData: { imageUrl: "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'%3E%3Crect width='100%25' height='100%25' fill='%23e0e0e0'/%3E%3Cpath d='M 200 200 L 600 200 M 350 150 L 450 250' stroke='%23777' stroke-width='4' fill='none'/%3E%3Ctext x='400' y='50' font-family='sans-serif' font-size='20' text-anchor='middle' fill='%23555'%3E[OFFLINE EVIDENCE RENDER]%3C/text%3E%3C/svg%3E", description: 'Rough, grainy, crystalline fracture surface typical of a sudden overload in cast aluminum.', hasZoom: false, zoomDetails: '', annotations: [{x: 50, y: 50, label: 'Rough fracture surface'}] }
+      },
+      {
+        id: 'ev2', name: 'Maintenance Log', category: 'document', cost: 5, redHerring: true, supportsCauseIds: ['fatigue'], redHerringExplanation: 'The maintenance log shows a missed lubrication cycle, suggesting wear/fatigue, but the clean, rapid overload fracture surface proves otherwise.', shortSummary: 'Recent maintenance records.',
+        witnessData: { witnessName: 'Tech', role: 'Maintenance', statement: 'We missed the last lubrication cycle on that elbow joint because the line was running 24/7.' }
       }
     ]
   }

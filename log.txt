@@ -1,0 +1,470 @@
+L1 B0: import React, { useState } from 'react';
+L2 B0: import { Case, UserProfile } from '../types';
+L3 B0: import { Play, Award, CheckCircle2, Shield, Flame, Compass, ChevronRight, BarChart3, HelpCircle, Search, SlidersHorizontal, ExternalLink } from 'lucide-react';
+L4 B0: 
+L5 B0: interface CaseLibraryProps {
+L6 B0: cases: Case[];
+L7 B0: user: UserProfile;
+L8 B0: onSelectCase: (c: Case) => void;
+L9 B0: setCases: React.Dispatch<React.SetStateAction<Case[]>>;
+L10 B0: }
+L11 B0: 
+L12 B0: export default function CaseLibrary({ cases, user, onSelectCase, setCases }: CaseLibraryProps) {
+L13 B0: const [selectedType, setSelectedType] = useState<string | null>(null);
+L14 B0: const [searchQuery, setSearchQuery] = useState('');
+L15 B0: const [difficultyFilter, setDifficultyFilter] = useState<'All' | 'Beginner' | 'Intermediate' | 'Advanced'>('All');
+L16 B0: const [visibleCount, setVisibleCount] = useState(6);
+L17 B0: 
+L18 B0: const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+L19 B0: const file = e.target.files?.[0];
+L20 B0: if (!file) return;
+L21 B0: const reader = new FileReader();
+L22 B0: reader.onload = (event) => {
+L23 B0: try {
+L24 B0: const imported = JSON.parse(event.target?.result as string);
+L25 B0: const newCases = Array.isArray(imported) ? imported : [imported];
+L26 B0: // Basic validation
+L27 B0: const isValid = newCases.every(c => c.id && c.title && c.evidence && Array.isArray(c.evidence));
+L28 B0: if (!isValid) {
+L29 B0: alert('Import Error: JSON is missing required fields (id, title, or evidence array).');
+L30 B0: return;
+L31 B0: }
+L32 B0: setCases(prev => {
+L33 B0: // get existing imported cases from localstorage, merge, and save
+L34 B0: const saved = localStorage.getItem('forensiq-cases');
+L35 B0: let currentCustom = [];
+L36 B0: if (saved) {
+L37 B0: try { currentCustom = JSON.parse(saved); } catch(err) {}
+L38 B0: }
+L39 B0: const mergedCustom = [...currentCustom, ...newCases];
+L40 B0: localStorage.setItem('forensiq-cases', JSON.stringify(mergedCustom));
+L41 B0: 
+L42 B0: const ids = new Set(prev.map(p => p.id));
+L43 B0: const uniqueNew = newCases.filter(nc => !ids.has(nc.id));
+L44 B0: return [...prev, ...uniqueNew];
+L45 B0: });
+L46 B0: alert(`Successfully imported ${newCases.length} case(s).`);
+L47 B0: } catch (err) {
+L48 B0: alert('Import Error: Malformed JSON file.');
+L49 B0: }
+L50 B0: };
+L51 B0: reader.readAsText(file);
+L52 B0: e.target.value = '';
+L53 B0: };
+L54 B0: 
+L55 B0: const handleExport = (caseData?: Case) => {
+L56 B0: const data = caseData ? [caseData] : cases;
+L57 B0: const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+L58 B0: const url = URL.createObjectURL(blob);
+L59 B0: const a = document.createElement('a');
+L60 B0: a.href = url;
+L61 B0: a.download = caseData ? `case-${caseData.id}.json` : 'forensiq-cases.json';
+L62 B0: a.click();
+L63 B0: URL.revokeObjectURL(url);
+L64 B0: };
+L65 B0: 
+L66 B0: 
+L67 B0: // Calculate running stats
+L68 B0: const completedIds = user.history.map(h => h.caseId);
+L69 B0: const totalSolved = user.history.filter(h => h.correct).length;
+L70 B0: const avgScore = user.history.length > 0
+L71 B0: ? Math.round(user.history.reduce((acc, h) => acc + h.score, 0) / user.history.length)
+L72 B0: : 0;
+L73 B0: 
+L74 B0: // Filter cases dynamically based on type, search and difficulty
+L75 B0: const filteredCases = cases.filter(c => {
+L76 B0: if (selectedType && c.majorCaseType !== selectedType) return false;
+L77 B0: const matchesSearch = c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+L78 B0: c.system.toLowerCase().includes(searchQuery.toLowerCase()) ||
+L79 B0: c.shortDescription.toLowerCase().includes(searchQuery.toLowerCase());
+L80 B0: const matchesDifficulty = difficultyFilter === 'All' || c.difficulty === difficultyFilter;
+L81 B0: return matchesSearch && matchesDifficulty;
+L82 B0: });
+L83 B0: 
+L84 B0: const displayedCases = filteredCases.slice(0, visibleCount);
+L85 B0: 
+L86 B0: // Group by Case Type for the initial selection view
+L87 B0: const caseTypeCounts = cases.reduce((acc, c) => {
+L88 B0: acc[c.majorCaseType] = (acc[c.majorCaseType] || 0) + 1;
+L89 B0: return acc;
+L90 B0: }, {} as Record<string, number>);
+L91 B0: 
+L92 B0: const caseCategories = Object.entries(caseTypeCounts).sort((a, b) => a[0].localeCompare(b[0]));
+L93 B0: 
+L94 B0: // Difficulty badge styling helper
+L95 B0: const getDifficultyStyle = (diff: string) => {
+L96 B0: switch (diff) {
+L97 B0: case 'Beginner': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+L98 B0: case 'Intermediate': return 'bg-amber-50 text-amber-700 border-amber-100';
+L99 B0: case 'Advanced': return 'bg-rose-50 text-rose-700 border-rose-100';
+L100 B0: default: return 'bg-slate-50 text-slate-700 border-slate-100';
+L101 B0: }
+L102 B0: };
+L103 B0: 
+L104 B0: // Dial value formatting helper (1-5 range to sharp blocks)
+L105 B0: const renderDial = (val: number, colorClass: string) => {
+L106 B0: return (
+L107 B1: <div className="flex space-x-1 mt-1.5" title={`${val} / 5`}>
+L108 B1: {[1, 2, 3, 4, 5].map((idx) => (
+L109 B1: <div
+L110 B1: key={idx}
+L111 B1: className={`h-2 w-4 border border-[#121212] transition-colors ${
+L112 B1: idx <= val
+L113 B1: ? (colorClass.includes('indigo') ? 'bg-[#121212]' : 'bg-red-600')
+L114 B1: : 'bg-transparent'
+L115 B1: }`}
+L116 B1: />
+L117 B1: ))}
+L118 B0: </div>
+L119 B0: );
+L120 B0: };
+L121 B0: 
+L122 B0: return (
+L123 B1: <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-fade-in" id="case-library-view">
+L124 B2: <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+L125 B2: 
+L126 B2: {/* Main Case List Left Column */}
+L127 B3: <div className="lg:col-span-2 space-y-8">
+L128 B3: {!selectedType ? (
+L129 B4: <div className="space-y-6 animate-fade-in">
+L130 B4: 
+L131 B5: <div className="border-b-2 border-[#121212] pb-6 flex justify-between items-start">
+L132 B6: <div>
+L133 B6: <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#121212]/60 block mb-1">
+L134 B6: Case Categories
+L135 B6: </span>
+L136 B6: <h2 className="font-serif italic text-4xl lg:text-5xl text-[#121212] leading-tight">
+L137 B6: Select Failure Mode
+L138 B6: </h2>
+L139 B6: <p className="text-sm text-[#121212]/80 mt-2 font-sans max-w-xl leading-relaxed">
+L140 B6: Choose a structural, fluid, or thermodynamic failure category to explore related incident investigations.
+L141 B6: </p>
+L142 B5: </div>
+L143 B6: <div className="flex flex-col gap-2 shrink-0">
+L144 B6: <label className="px-4 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-center border border-[#121212]/30 text-[#121212]/70 hover:bg-[#121212]/5 hover:text-[#121212] bg-white cursor-pointer">
+L145 B6: Import Case Pack
+L146 B6: <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+L147 B6: </label>
+L148 B6: <button onClick={() => handleExport()} className="px-4 py-2 text-[10px] font-bold uppercase tracking-[0.1em] border border-[#121212]/30 text-[#121212]/70 hover:bg-[#121212]/5 hover:text-[#121212] bg-white">
+L149 B6: Export All Cases
+L150 B6: </button>
+L151 B5: </div>
+L152 B4: </div>
+L153 B4: 
+L154 B4: 
+L155 B5: <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+L156 B5: {caseCategories.map(([type, count]) => (
+L157 B5: <button
+L158 B5: key={type}
+L159 B5: onClick={() => {
+L160 B5: setSelectedType(type);
+L161 B5: setVisibleCount(6);
+L162 B5: setDifficultyFilter('All');
+L163 B5: setSearchQuery('');
+L164 B5: }}
+L165 B5: className="text-left border border-[#121212] bg-[#FFFFFF] hover:bg-[#121212] hover:text-white group p-6 transition-all flex flex-col justify-center min-h-[140px]"
+L166 B5: >
+L167 B5: <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-red-600 group-hover:text-red-400 block mb-3">
+L168 B5: {count} RECORDED CASES
+L169 B5: </span>
+L170 B5: <h3 className="font-serif italic text-2xl text-[#121212] group-hover:text-white leading-tight">
+L171 B5: {type}
+L172 B5: </h3>
+L173 B5: </button>
+L174 B5: ))}
+L175 B4: </div>
+L176 B3: </div>
+L177 B3: ) : (
+L178 B4: <div className="space-y-8 animate-fade-in">
+L179 B5: <div>
+L180 B5: <button
+L181 B5: onClick={() => { setSelectedType(null); setSearchQuery(''); setDifficultyFilter('All'); }}
+L182 B5: className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#121212]/60 hover:text-[#121212] flex items-center gap-1 mb-6 transition-colors"
+L183 B5: >
+L184 B5: <ChevronRight className="h-3.5 w-3.5 rotate-180" /> BACK TO CATEGORIES
+L185 B5: </button>
+L186 B6: <div className="border-b-2 border-[#121212] pb-6">
+L187 B6: <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-red-600 block mb-1">
+L188 B6: Category Filter Applied
+L189 B6: </span>
+L190 B6: <h2 className="font-serif italic text-4xl lg:text-5xl text-[#121212] leading-tight">
+L191 B6: {selectedType}
+L192 B6: </h2>
+L193 B5: </div>
+L194 B4: </div>
+L195 B4: 
+L196 B4: {/* Search and Filters Bar */}
+L197 B5: <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border border-[#121212] bg-[#FFFFFF]" id="catalog-filters">
+L198 B6: <div className="md:col-span-2 relative">
+L199 B6: <Search className="absolute left-3 top-3.5 h-4 w-4 text-[#121212]/40" />
+L200 B6: <input
+L201 B6: type="text"
+L202 B6: placeholder="Search incident titles, systems, components, descriptions..."
+L203 B6: value={searchQuery}
+L204 B6: onChange={(e) => {
+L205 B6: setSearchQuery(e.target.value);
+L206 B6: setVisibleCount(6); // reset pagination on search
+L207 B6: }}
+L208 B6: className="w-full pl-9 pr-4 py-2.5 text-xs border border-[#121212] bg-[#FFFFFF] text-[#121212] focus:outline-none focus:ring-1 focus:ring-[#121212] placeholder-[#121212]/40 font-mono"
+L209 B6: id="case-search-input"
+L210 B6: />
+L211 B5: </div>
+L212 B6: <div className="relative">
+L213 B6: <SlidersHorizontal className="absolute left-3 top-3.5 h-3.5 w-3.5 text-[#121212]/40" />
+L214 B6: <select
+L215 B6: value={difficultyFilter}
+L216 B6: onChange={(e) => {
+L217 B6: setDifficultyFilter(e.target.value as any);
+L218 B6: setVisibleCount(6); // reset pagination on filter
+L219 B6: }}
+L220 B6: className="w-full pl-9 pr-4 py-2.5 text-xs border border-[#121212] bg-[#FFFFFF] text-[#121212] focus:outline-none focus:ring-1 focus:ring-[#121212] font-mono font-bold font-mono"
+L221 B6: id="difficulty-filter-select"
+L222 B6: >
+L223 B6: <option value="All">All Difficulties</option>
+L224 B6: <option value="Beginner">Beginner</option>
+L225 B6: <option value="Intermediate">Intermediate</option>
+L226 B6: <option value="Advanced">Advanced</option>
+L227 B6: </select>
+L228 B5: </div>
+L229 B4: </div>
+L230 B4: 
+L231 B5: <div className="space-y-8" id="case-cards-container">
+L232 B5: {displayedCases.length === 0 ? (
+L233 B6: <div className="border border-[#121212] border-dashed p-10 text-center bg-[#FFFFFF]" id="no-cases-found">
+L234 B6: <span className="text-xs font-mono font-bold text-[#121212]/60 uppercase tracking-wider block mb-2">No Matching Incident Files</span>
+L235 B6: <p className="text-sm text-[#121212]/80 max-w-md mx-auto leading-relaxed">
+L236 B6: Adjust your search keyword or selected difficulty filter to retrieve registry archives.
+L237 B6: </p>
+L238 B5: </div>
+L239 B5: ) : (
+L240 B5: Object.entries(
+L241 B5: displayedCases.reduce((acc, c) => {
+L242 B5: if (!acc[c.difficulty]) acc[c.difficulty] = [];
+L243 B5: acc[c.difficulty].push(c);
+L244 B5: return acc;
+L245 B5: }, {} as Record<string, Case[]>)
+L246 B5: )
+L247 B5: .sort(([a], [b]) => {
+L248 B5: const order: Record<string, number> = { 'Beginner': 1, 'Intermediate': 2, 'Advanced': 3 };
+L249 B5: return (order[a] || 4) - (order[b] || 4);
+L250 B5: })
+L251 B5: .map(([difficultyLevel, group]) => (
+L252 B6: <div key={difficultyLevel} className="space-y-4">
+L253 B7: <div className="flex items-center gap-2 border-b border-[#121212]/30 pb-2">
+L254 B7: <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-red-600 bg-red-50 px-2 py-0.5 border border-red-100">
+L255 B7: DIFFICULTY LEVEL
+L256 B7: </span>
+L257 B7: <h4 className="text-xl font-serif italic text-[#121212]">{difficultyLevel}</h4>
+L258 B6: </div>
+L259 B6: {group.map((c) => {
+L260 B6: const attempts = user.history.filter(h => h.caseId === c.id);
+L261 B6: const attemptCount = attempts.length;
+L262 B6: const bestScore = attemptCount > 0 ? Math.max(...attempts.map(a => a.score)) : 0;
+L263 B6: const isCompleted = attemptCount > 0;
+L264 B6: const bestEntry = attempts.find(a => a.score === bestScore);
+L265 B6: const wasCorrect = bestEntry?.correct;
+L266 B6: 
+L267 B6: return (
+L268 B6: <div
+L269 B6: key={c.id}
+L270 B6: className={`border border-[#121212] p-6 bg-[#FFFFFF] transition-all duration-200 relative flex flex-col md:flex-row justify-between items-start md:items-center gap-6 ${
+L271 B6: isCompleted ? 'bg-[#F1EFE9]/40 border-dashed' : 'hover:bg-[#F1EFE9]/20'
+L272 B6: }`}
+L273 B6: id={`case-card-${c.id}`}
+L274 B6: >
+L275 B6: {/* Left Content */}
+L276 B7: <div className="space-y-3.5 flex-1">
+L277 B8: <div className="flex flex-wrap items-center gap-2.5">
+L278 B8: <span className={`px-2.5 py-0.5 text-[9px] font-mono font-bold uppercase border ${getDifficultyStyle(c.difficulty)}`}>
+L279 B8: {c.difficulty}
+L280 B8: </span>
+L281 B8: <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#121212]/50">
+L282 B8: {c.system}
+L283 B8: </span>
+L284 B8: {isCompleted && (
+L285 B8: <span className={`flex items-center text-[10px] font-mono font-bold uppercase tracking-wider ${wasCorrect ? 'text-emerald-700' : 'text-red-700'}`}>
+L286 B8: {wasCorrect ? (
+L287 B8: <>
+L288 B8: <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-600" /> PERSONAL BEST: {bestScore} | ATTEMPTS: {attemptCount}
+L289 B8: </>
+L290 B8: ) : (
+L291 B8: <>
+L292 B8: <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-red-600" /> UNSOLVED | ATTEMPTS: {attemptCount}
+L293 B8: </>
+L294 B8: )}
+L295 B8: </span>
+L296 B8: )}
+L297 B7: </div>
+L298 B7: 
+L299 B7: <h3 className="font-serif italic text-xl text-[#121212] leading-none">
+L300 B7: {c.title}
+L301 B7: </h3>
+L302 B7: <p className="text-xs text-[#121212]/80 leading-relaxed max-w-xl">
+L303 B7: {c.shortDescription}
+L304 B7: </p>
+L305 B7: 
+L306 B7: {/* Ambiguity & Red-Herring Dial Metrics */}
+L307 B8: <div className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-3 border-t border-[#121212]/10 text-[9px] font-mono font-bold text-[#121212]/60 uppercase tracking-widest">
+L308 B9: <div>
+L309 B9: <span>Ambiguity Rating</span>
+L310 B9: {renderDial(c.ambiguity, 'bg-indigo-500')}
+L311 B8: </div>
+L312 B9: <div>
+L313 B9: <span>Red-Herring Density</span>
+L314 B9: {renderDial(c.redHerringDensity, 'bg-amber-500')}
+L315 B8: </div>
+L316 B7: </div>
+L317 B6: </div>
+L318 B6: 
+L319 B6: {/* Play / Select Button Right */}
+L320 B7: <div className="shrink-0 w-full md:w-auto flex flex-col md:items-end items-stretch gap-2">
+L321 B7: <button
+L322 B7: onClick={() => onSelectCase(c)}
+L323 B7: className={`w-full md:w-auto px-5 py-3 text-xs font-bold uppercase tracking-[0.2em] flex items-center justify-center space-x-1.5 transition-all border border-[#121212] cursor-pointer ${
+L324 B7: isCompleted
+L325 B7: ? 'bg-[#F1EFE9] hover:bg-[#121212] hover:text-white text-[#121212]'
+L326 B7: : 'bg-[#121212] hover:bg-[#121212]/90 text-white shadow-sm'
+L327 B7: }`}
+L328 B7: id={`select-case-${c.id}`}
+L329 B7: >
+L330 B7: <Play className="h-3 w-3 fill-current" />
+L331 B7: <span>{isCompleted ? 'Review Records' : 'Launch File'}</span>
+L332 B7: </button>
+L333 B7: 
+L334 B7: {isCompleted && c.officialResourceUrl && (
+L335 B7: <a
+L336 B7: href={c.officialResourceUrl}
+L337 B7: target="_blank"
+L338 B7: rel="noopener noreferrer"
+L339 B7: className="w-full md:w-auto px-4 py-2 text-[10px] font-bold uppercase tracking-[0.1em] flex items-center justify-center space-x-1.5 transition-all border border-[#121212]/30 text-[#121212]/70 hover:bg-[#121212]/5 hover:text-[#121212] bg-white"
+L340 B7: >
+L341 B7: <ExternalLink className="h-3 w-3" />
+L342 B7: <span>External Reference</span>
+L343 B7: </a>
+L344 B7: )}
+L345 B7: 
+L346 B7: 
+L347 B7: <button
+L348 B7: onClick={() => handleExport(c)}
+L349 B7: className="w-full md:w-auto px-4 py-2 text-[10px] font-bold uppercase tracking-[0.1em] flex items-center justify-center space-x-1.5 transition-all border border-[#121212]/30 text-[#121212]/70 hover:bg-[#121212]/5 hover:text-[#121212] bg-white"
+L350 B7: >
+L351 B7: <ExternalLink className="h-3 w-3" />
+L352 B7: <span>Export Case JSON</span>
+L353 B7: </button>
+L354 B7: 
+L355 B6: </div>
+L356 B6: );
+L357 B6: })}
+L358 B6: 
+L359 B5: </div>
+L360 B5: ))
+L361 B5: )}
+L362 B4: </div>
+L363 B4: 
+L364 B4: {filteredCases.length > visibleCount && (
+L365 B5: <div className="flex justify-center pt-2" id="load-more-container">
+L366 B5: <button
+L367 B5: onClick={() => setVisibleCount(prev => prev + 6)}
+L368 B5: className="px-6 py-3 bg-[#FFFFFF] hover:bg-[#121212] hover:text-[#F9F7F2] text-[#121212] border border-[#121212] text-xs font-bold uppercase tracking-[0.25em] transition-all cursor-pointer flex items-center gap-1.5"
+L369 B5: id="load-more-cases-btn"
+L370 B5: >
+L371 B5: <span>LOAD MORE CASES</span>
+L372 B5: <ChevronRight className="h-3.5 w-3.5 rotate-90" />
+L373 B5: </button>
+L374 B4: </div>
+L375 B4: )}
+L376 B3: </div>
+L377 B3: )}
+L378 B2: </div>
+L379 B2: 
+L380 B2: {/* Sidebar stats/guidance Right Column */}
+L381 B3: <div className="space-y-8">
+L382 B3: 
+L383 B3: {/* Stats Dashboard */}
+L384 B4: <div className="border border-[#121212] bg-[#121212] p-6 text-white space-y-6" id="stats-dashboard">
+L385 B5: <div className="border-b border-[#F9F7F2]/20 pb-4">
+L386 B5: <span className="text-[9px] font-mono font-bold tracking-[0.3em] uppercase text-red-500 block mb-1">
+L387 B5: UET Registry Desk
+L388 B5: </span>
+L389 B5: <h3 className="font-serif italic text-2xl text-[#F9F7F2] flex items-center gap-2">
+L390 B5: <BarChart3 className="h-5 w-5 text-red-500" />
+L391 B5: <span>Investigator Console</span>
+L392 B5: </h3>
+L393 B4: </div>
+L394 B4: 
+L395 B5: <div className="grid grid-cols-2 gap-4">
+L396 B6: <div className="bg-[#121212] border border-[#F9F7F2]/20 p-4">
+L397 B6: <span className="text-[9px] font-mono text-[#F9F7F2]/50 block uppercase tracking-wider">Solved Ratio</span>
+L398 B6: <span className="text-2xl font-serif italic text-white mt-1 block">
+L399 B6: {totalSolved} <span className="text-xs font-sans not-italic text-[#F9F7F2]/40">/ {cases.length}</span>
+L400 B6: </span>
+L401 B5: </div>
+L402 B6: <div className="bg-[#121212] border border-[#F9F7F2]/20 p-4">
+L403 B6: <span className="text-[9px] font-mono text-[#F9F7F2]/50 block uppercase tracking-wider">Average Score</span>
+L404 B6: <span className="text-2xl font-serif italic text-white mt-1 block">
+L405 B6: {avgScore}<span className="text-xs font-sans not-italic text-[#F9F7F2]/40">/100</span>
+L406 B6: </span>
+L407 B5: </div>
+L408 B4: </div>
+L409 B4: 
+L410 B4: {/* Micro certification competency tracks */}
+L411 B5: <div className="pt-4 border-t border-[#F9F7F2]/20 space-y-3 text-xs">
+L412 B5: <span className="text-[9px] font-mono font-bold text-[#F9F7F2]/50 uppercase tracking-widest block">
+L413 B5: METALLURGICAL COMPETENCY
+L414 B5: </span>
+L415 B6: <div className="space-y-2 text-slate-300 font-mono text-[11px]">
+L416 B7: <div className="flex justify-between items-center bg-[#1F1F1F] p-3 border border-transparent">
+L417 B7: <span className="text-slate-300">ASNT Level II NDT</span>
+L418 B7: <span className="text-[9px] bg-red-600/20 text-red-400 border border-red-600/30 font-bold px-2 py-0.5">ALIGNED</span>
+L419 B6: </div>
+L420 B7: <div className="flex justify-between items-center bg-[#1F1F1F] p-3 border border-transparent">
+L421 B7: <span className="text-slate-300">ISO 9712 Failure</span>
+L422 B7: <span className="text-[9px] bg-red-600/20 text-red-400 border border-red-600/30 font-bold px-2 py-0.5">ALIGNED</span>
+L423 B6: </div>
+L424 B5: </div>
+L425 B4: </div>
+L426 B3: </div>
+L427 B3: 
+L428 B3: {/* Pedagogical info card */}
+L429 B4: <div className="border border-[#121212] bg-[#F1EFE9] p-6 space-y-4" id="pedagogy-card">
+L430 B5: <div className="border-b border-[#121212]/10 pb-3">
+L431 B5: <h3 className="font-serif italic text-xl text-[#121212] flex items-center gap-2">
+L432 B5: <HelpCircle className="h-4 w-4 text-red-600" />
+L433 B5: <span>Forensic Protocol Playbook</span>
+L434 B5: </h3>
+L435 B4: </div>
+L436 B5: <div className="text-xs text-[#121212]/80 space-y-4 leading-relaxed">
+L437 B6: <div className="flex gap-3">
+L438 B7: <div className="bg-[#121212] text-[#F9F7F2] h-5 w-5 flex items-center justify-center font-bold font-mono text-[10px] shrink-0 mt-0.5">
+L439 B7: 01
+L440 B6: </div>
+L441 B6: <p>Read the <strong>Briefing Sheet</strong> thoroughly to understand operational parameters and background conditions.</p>
+L442 B5: </div>
+L443 B6: <div className="flex gap-3">
+L444 B7: <div className="bg-[#121212] text-[#F9F7F2] h-5 w-5 flex items-center justify-center font-bold font-mono text-[10px] shrink-0 mt-0.5">
+L445 B7: 02
+L446 B6: </div>
+L447 B6: <p>Formulate an initial <strong>Working Hypothesis</strong> first. System rules require at least one entry before file unlocks are permitted.</p>
+L448 B5: </div>
+L449 B6: <div className="flex gap-3">
+L450 B7: <div className="bg-[#121212] text-[#F9F7F2] h-5 w-5 flex items-center justify-center font-bold font-mono text-[10px] shrink-0 mt-0.5">
+L451 B7: 03
+L452 B6: </div>
+L453 B6: <p>Unlock visual fractographs, real-time sensor logs, and certifications carefully, conserving the 100 pt investigation budget.</p>
+L454 B5: </div>
+L455 B6: <div className="flex gap-3">
+L456 B7: <div className="bg-[#121212] text-[#F9F7F2] h-5 w-5 flex items-center justify-center font-bold font-mono text-[10px] shrink-0 mt-0.5">
+L457 B7: 04
+L458 B6: </div>
+L459 B6: <p>Retrieve <strong>expert instructor hints</strong> at any time to guide your thinking if you get stuck on a difficult diagnosis.</p>
+L460 B5: </div>
+L461 B4: </div>
+L462 B3: </div>
+L463 B3: 
+L464 B2: </div>
+L465 B2: 
+L466 B1: </div>
+L467 B0: </div>
+L468 B0: );
+L469 B0: }
+L470 B0: 

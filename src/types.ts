@@ -60,7 +60,9 @@ export interface EvidenceCard {
   category: EvidenceCategory;
   cost: number;
   redHerring: boolean;
+  redHerringExplanation?: string;
   shortSummary: string; // Brief description before unlocking
+  supportsCauseIds: string[];
   unlocked?: boolean;
   
   // Specific payload types based on category

@@ -6,13 +6,63 @@ interface CaseLibraryProps {
   cases: Case[];
   user: UserProfile;
   onSelectCase: (c: Case) => void;
+  setCases: React.Dispatch<React.SetStateAction<Case[]>>;
 }
 
-export default function CaseLibrary({ cases, user, onSelectCase }: CaseLibraryProps) {
+export default function CaseLibrary({ cases, user, onSelectCase, setCases }: CaseLibraryProps) {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<'All' | 'Beginner' | 'Intermediate' | 'Advanced'>('All');
   const [visibleCount, setVisibleCount] = useState(6);
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target?.result as string);
+        const newCases = Array.isArray(imported) ? imported : [imported];
+        // Basic validation
+        const isValid = newCases.every(c => c.id && c.title && c.evidence && Array.isArray(c.evidence));
+        if (!isValid) {
+          alert('Import Error: JSON is missing required fields (id, title, or evidence array).');
+          return;
+        }
+        setCases(prev => {
+          // get existing imported cases from localstorage, merge, and save
+          const saved = localStorage.getItem('forensiq-cases');
+          let currentCustom = [];
+          if (saved) {
+            try { currentCustom = JSON.parse(saved); } catch(err) {}
+          }
+          const mergedCustom = [...currentCustom, ...newCases];
+          localStorage.setItem('forensiq-cases', JSON.stringify(mergedCustom));
+          
+          const ids = new Set(prev.map(p => p.id));
+          const uniqueNew = newCases.filter(nc => !ids.has(nc.id));
+          return [...prev, ...uniqueNew];
+        });
+        alert(`Successfully imported ${newCases.length} case(s).`);
+      } catch (err) {
+        alert('Import Error: Malformed JSON file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleExport = (caseData?: Case) => {
+    const data = caseData ? [caseData] : cases;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = caseData ? `case-${caseData.id}.json` : 'forensiq-cases.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   
   // Calculate running stats
   const completedIds = user.history.map(h => h.caseId);
@@ -77,17 +127,30 @@ export default function CaseLibrary({ cases, user, onSelectCase }: CaseLibraryPr
         <div className="lg:col-span-2 space-y-8">
           {!selectedType ? (
             <div className="space-y-6 animate-fade-in">
-              <div className="border-b-2 border-[#121212] pb-6">
-                <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#121212]/60 block mb-1">
-                  Case Categories
-                </span>
-                <h2 className="font-serif italic text-4xl lg:text-5xl text-[#121212] leading-tight">
-                  Select Failure Mode
-                </h2>
-                <p className="text-sm text-[#121212]/80 mt-2 font-sans max-w-xl leading-relaxed">
-                  Choose a structural, fluid, or thermodynamic failure category to explore related incident investigations.
-                </p>
+              
+              <div className="border-b-2 border-[#121212] pb-6 flex justify-between items-start">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#121212]/60 block mb-1">
+                    Case Categories
+                  </span>
+                  <h2 className="font-serif italic text-4xl lg:text-5xl text-[#121212] leading-tight">
+                    Select Failure Mode
+                  </h2>
+                  <p className="text-sm text-[#121212]/80 mt-2 font-sans max-w-xl leading-relaxed">
+                    Choose a structural, fluid, or thermodynamic failure category to explore related incident investigations.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 shrink-0">
+                  <label className="px-4 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-center border border-[#121212]/30 text-[#121212]/70 hover:bg-[#121212]/5 hover:text-[#121212] bg-white cursor-pointer">
+                    Import Case Pack
+                    <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+                  </label>
+                  <button onClick={() => handleExport()} className="px-4 py-2 text-[10px] font-bold uppercase tracking-[0.1em] border border-[#121212]/30 text-[#121212]/70 hover:bg-[#121212]/5 hover:text-[#121212] bg-white">
+                    Export All Cases
+                  </button>
+                </div>
               </div>
+
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {caseCategories.map(([type, count]) => (
@@ -194,9 +257,12 @@ export default function CaseLibrary({ cases, user, onSelectCase }: CaseLibraryPr
                     <h4 className="text-xl font-serif italic text-[#121212]">{difficultyLevel}</h4>
                   </div>
                   {group.map((c) => {
-                    const isCompleted = completedIds.includes(c.id);
-                    const historyEntry = user.history.find(h => h.caseId === c.id);
-                    const wasCorrect = historyEntry?.correct;
+                    const attempts = user.history.filter(h => h.caseId === c.id);
+                    const attemptCount = attempts.length;
+                    const bestScore = attemptCount > 0 ? Math.max(...attempts.map(a => a.score)) : 0;
+                    const isCompleted = attemptCount > 0;
+                    const bestEntry = attempts.find(a => a.score === bestScore);
+                    const wasCorrect = bestEntry?.correct;
 
                     return (
                       <div
@@ -219,11 +285,11 @@ export default function CaseLibrary({ cases, user, onSelectCase }: CaseLibraryPr
                               <span className={`flex items-center text-[10px] font-mono font-bold uppercase tracking-wider ${wasCorrect ? 'text-emerald-700' : 'text-red-700'}`}>
                                 {wasCorrect ? (
                                   <>
-                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-600" /> SOLVED [Score: {historyEntry?.score}]
+                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-600" /> PERSONAL BEST: {bestScore} | ATTEMPTS: {attemptCount}
                                   </>
                                 ) : (
                                   <>
-                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-red-600" /> UNSOLVED
+                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-red-600" /> UNSOLVED | ATTEMPTS: {attemptCount}
                                   </>
                                 )}
                               </span>
@@ -276,10 +342,21 @@ export default function CaseLibrary({ cases, user, onSelectCase }: CaseLibraryPr
                               <span>External Reference</span>
                             </a>
                           )}
-                        </div>
+
+                        
+                          <button
+                            onClick={() => handleExport(c)}
+                            className="w-full md:w-auto px-4 py-2 text-[10px] font-bold uppercase tracking-[0.1em] flex items-center justify-center space-x-1.5 transition-all border border-[#121212]/30 text-[#121212]/70 hover:bg-[#121212]/5 hover:text-[#121212] bg-white"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            <span>Export Case JSON</span>
+                          </button>
+                        
+                      </div>
                       </div>
                     );
                   })}
+
                 </div>
               ))
             )}

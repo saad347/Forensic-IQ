@@ -68,7 +68,7 @@ export default function SubmitDiagnosis({ currentCase, unlockedEvidence, onSubmi
         {/* Evidence Citations list */}
         <div className="space-y-1.5 font-sans">
           <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#121212]/60 flex items-center gap-1.5">
-            <CheckSquare className="h-3.5 w-3.5 text-[#121212]/50" /> Cite Unlocked Evidence (Required for verification):
+            <CheckSquare className="h-3.5 w-3.5 text-[#121212]/50" /> Select the evidence that supports your diagnosis:
           </label>
           {unlockedEvidence.length === 0 ? (
             <div className="text-[11px] text-red-800 bg-red-50 p-3 border border-red-300 flex items-start gap-2 leading-relaxed">
@@ -94,6 +94,7 @@ export default function SubmitDiagnosis({ currentCase, unlockedEvidence, onSubmi
                     className="border-[#121212]/40 text-[#121212] focus:ring-[#121212] h-3.5 w-3.5 bg-transparent"
                     id={`cite-checkbox-${card.id}`}
                   />
+                  <span className="text-[9px] uppercase tracking-wider font-mono opacity-60">[{card.category}]</span>
                   <span className="truncate font-bold">{card.name}</span>
                 </label>
               ))}
@@ -104,7 +105,7 @@ export default function SubmitDiagnosis({ currentCase, unlockedEvidence, onSubmi
         {/* Written Justification Statement */}
         <div className="space-y-1.5 font-sans">
           <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#121212]/60">
-            Written Causal Justification (Minimum 2-3 sentences):
+            Written Analysis (for your own reflection and instructor review — not scored):
           </label>
           <textarea
             value={justification}
@@ -116,7 +117,7 @@ export default function SubmitDiagnosis({ currentCase, unlockedEvidence, onSubmi
             id="justification-textarea"
           />
           <div className="text-[10px] text-[#121212]/50 italic leading-normal">
-            Write clearly. The ForensiQ scoring engine compares your cited arguments with the true causal chain, penalizing guesses without justification.
+            Write clearly. This text does not affect the numeric score, but provides context for review.
           </div>
         </div>
 

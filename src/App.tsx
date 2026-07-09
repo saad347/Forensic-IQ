@@ -26,6 +26,16 @@ export default function App() {
     };
   });
 
+  const [cases, setCases] = useState<Case[]>(() => {
+    const saved = localStorage.getItem('forensiq-cases');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return [...INITIAL_CASES, ...parsed];
+      } catch (e) {}
+    }
+    return INITIAL_CASES;
+  });
   const [activeCase, setActiveCase] = useState<Case | null>(null);
   
   // Game state for the currently active case
@@ -141,74 +151,71 @@ export default function App() {
     const correctCause = activeCase.taxonomyCauses.find(c => c.id === activeCase.correctCauseId);
     const userCause = activeCase.taxonomyCauses.find(c => c.id === suspectedCauseId);
 
-    // Deterministic base score calculation:
-    // Correctness: 50 points
-    // Points Spent penalty: subtract a fraction of points spent (encourage efficiency, penalize red herrings)
-    // Red herrings unlocked: check if any unlocked card is marked as a red herring, -10 points each
     const correctPoints = isCorrect ? 50 : 0;
     const unlockedRedHerringsCount = evidence.filter(e => e.unlocked && e.redHerring).length;
     const redHerringPenalty = unlockedRedHerringsCount * 10;
-    const budgetBonus = Math.round(budget * 0.5); // Up to 50 pts if budget was perfectly preserved
-
+    const budgetBonus = Math.round(budget * 0.5);
     const baseInvestigativeScore = Math.max(0, correctPoints + budgetBonus - redHerringPenalty);
 
-    // High-fidelity local justification grading based on length and core concepts matching
-    let justificationScore = 20; // baseline
-    if (isCorrect) {
-      justificationScore = 50; // correct cause base
-      if (justification.length > 100) justificationScore += 15;
-      if (justification.length > 250) justificationScore += 15;
-      
-      // Bonus if key keywords are in user's justification
-      const keywords = ['fracture', 'microstructure', 'stress', 'analysis', 'fatigue', 'overload', 'cleavage', 'beach', 'corrosion', 'microvoid'];
-      let foundKeywords = 0;
-      keywords.forEach(kw => {
-        if (justification.toLowerCase().includes(kw)) foundKeywords++;
-      });
-      justificationScore += Math.min(20, foundKeywords * 3);
-    } else {
-      // incorrect cause base
-      justificationScore = 25;
-      if (justification.length > 150) justificationScore += 10;
+    let justificationScore = 0;
+    let correctCitations = 0;
+    let correctCitationPoints = 0;
+    let redHerringPenaltyPoints = 0;
+    let citedRedHerrings: string[] = [];
+    let citedValidEvidence: string[] = [];
+
+    citedEvidenceIds.forEach(id => {
+      const card = evidence.find(e => e.id === id);
+      if (card) {
+        if (card.supportsCauseIds.includes(activeCase.correctCauseId)) {
+          correctCitations++;
+          if (correctCitations === 1) correctCitationPoints += 40;
+          else correctCitationPoints += 10;
+          citedValidEvidence.push(card.name);
+        }
+        if (card.redHerring) {
+          redHerringPenaltyPoints += 15;
+          citedRedHerrings.push(card.name);
+        }
+      }
+    });
+
+    correctCitationPoints = Math.min(70, correctCitationPoints);
+    justificationScore = correctCitationPoints - redHerringPenaltyPoints;
+    justificationScore = Math.max(0, Math.min(100, justificationScore));
+
+    if (citedEvidenceIds.length === 0) {
+      justificationScore = 0;
     }
-    justificationScore = Math.min(100, justificationScore);
 
     const finalScore = Math.round((baseInvestigativeScore * 0.6) + (justificationScore * 0.4));
 
-    // Peer Review Feedback Generator
     const getClientFeedback = () => {
-      const isWordy = justification.length > 150;
-      const hasRedHerring = unlockedRedHerringsCount > 0;
       const uCauseName = userCause?.name || 'Unknown Mechanism';
       const cCauseName = correctCause?.name || 'Unknown Mechanism';
 
-      if (isCorrect) {
-        let text = `Excellent physical diagnosis! Your identification of ${cCauseName} perfectly aligns with the forensic metallurgical observations. `;
-        if (isWordy) {
-          text += `Your analysis exhibits exceptional professional depth, drawing robust connections between macroscopic stress layouts and micro-fractography evidence. `;
-        } else {
-          text += `Your rationale is accurate, though expanding the report with more specific references to SEM scan findings would elevate the engineering record. `;
-        }
-        if (!hasRedHerring) {
-          text += `Your forensic methodology was highly efficient, conserving budget resources and ignoring distracting non-empirical witness speculation.`;
-        } else {
-          text += `Note: Unlocking red herrings (${unlockedRedHerringsCount} files) reduced investigation efficiency. Focus strictly on core physical materials in future cases.`;
-        }
-        return text;
+      let text = isCorrect 
+        ? `Excellent physical diagnosis! Your identification of ${cCauseName} perfectly aligns with the forensic metallurgical observations. ` 
+        : `Peer Review Status: Rejected. You proposed ${uCauseName}, but structural archives do not substantiate this. `;
+
+      if (citedEvidenceIds.length === 0) {
+        text += "No evidence was cited to support this diagnosis. ";
       } else {
-        let text = `Peer Review Status: Rejected. You proposed ${uCauseName}, but structural archives do not substantiate this. `;
-        if (evidence.filter(e => e.unlocked).length === 0) {
-          text += `No empirical physical evidence was unlocked prior to filing your report. A forensic diagnosis cannot be substantiated on pure speculation. `;
-        } else {
-          text += `Your justification is detailed but fails to resolve key material properties. For example, fracture facets or thermal logs point directly to ${cCauseName} instead of your proposed diagnosis. `;
+        if (citedValidEvidence.length > 0) {
+          text += `Your citation of ${citedValidEvidence.join(', ')} correctly supports the physics of this failure. `;
+        } else if (isCorrect) {
+          text += `However, your cited evidence does not strongly support this conclusion. `;
         }
-        text += `Examine the micrographs, cross-reference high-resolution fracture surfaces, and submit an amended investigation report.`;
-        return text;
+        
+        if (citedRedHerrings.length > 0) {
+          text += `Note: Your citation of ${citedRedHerrings.join(', ')} weakens your report; this evidence was a red herring intended to test your diagnostic focus. `;
+        }
       }
+      return text;
     };
 
     setTimeout(() => {
-      const newSession: CompletedCaseSession = {
+      const newSession = {
         caseId: activeCase.id,
         completedAt: new Date().toISOString(),
         score: finalScore,
@@ -222,8 +229,7 @@ export default function App() {
         gradingScore: justificationScore
       };
 
-      // Save to user profile history
-      const updatedHistory = [...user.history.filter(h => h.caseId !== activeCase.id), newSession];
+      const updatedHistory = [...user.history, newSession];
       const newTotalScore = updatedHistory.reduce((acc, h) => acc + h.score, 0);
 
       setUser(prev => ({
@@ -234,8 +240,10 @@ export default function App() {
 
       setCompletedSession(newSession);
       setSubmittingDiagnosis(false);
-    }, 1100); // realistic high-tech diagnostic simulation delay
+    }, 1100);
   };
+
+
 
   // Reset simulator state
   const handleResetProgress = () => {
@@ -270,7 +278,8 @@ export default function App() {
         ) : !activeCase ? (
           /* Case Selection Screen */
           <CaseLibrary
-            cases={INITIAL_CASES}
+            cases={cases}
+            setCases={setCases}
             user={user}
             onSelectCase={handleLaunchCase}
           />
